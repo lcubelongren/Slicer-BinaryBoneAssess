@@ -1,1 +1,1 @@
-# Slicer-BinaryBoneAssess
+#  Binary Bone Assess
