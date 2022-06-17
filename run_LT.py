@@ -8,15 +8,24 @@ Author: L. L. Longren
 
 import numpy as np
 import matplotlib.pyplot as plt
+from skimage import io
 import time
 
 t1 = time.time()
 
 ## Create a test image
 sl = int(2**6)
-I = np.zeros((sl, sl, sl))
-I[sl//8:-sl//8, sl//8:-sl//8, sl//8:-sl//8] = 1
-I[sl//4:-sl//4, sl//4:-sl//4, sl//4:-sl//4] = 0
+def hollowSquare(sl):
+    I = np.zeros((sl, sl, sl), dtype='uint8')
+    I[sl//8:-sl//8, sl//8:-sl//8, sl//8:-sl//8] = 1
+    I[sl//4:-sl//4, sl//4:-sl//4, sl//4:-sl//4] = 0
+    return I
+I = hollowSquare(sl)
+io.imsave('output/hollowSquare_sl-{}.tif'.format(sl), I)
+
+#I = io.imread('/media/lukel/LL External/testdata/mouse_skull_reference/Data/4074_skulltif.tif').astype('uint8')
+#I = I[:sl, :sl, :sl]
+
 print('Input shape: {}'.format(I.shape))
 
 # Calculations from pre-existing libraries
@@ -33,7 +42,7 @@ medialaxisArray = np.where(skeletonArray, distanceArray, np.zeros(np.shape(dista
 distanceridgeArray = np.where(medialaxisArray == 0, I * very_small_value, medialaxisArray)
 
 # Calculations using the translation from Java
-from Local_Thickness_translation import Local_Thickness_Parallel, Clean_Up_Local_Thickness
+from Local_Thickness import Local_Thickness_Parallel, Clean_Up_Local_Thickness
 
 LTP = Local_Thickness_Parallel(distanceridgeArray)
 LTP_out = LTP.run()
@@ -43,24 +52,30 @@ CULT_out = CULT.run()
 
 # Mask the local thickness map
 result = np.where(I, CULT_out, np.zeros(np.shape(I)))
+io.imsave('output/pythonOut/hollowSquare_sl-{}_LocThk.tif'.format(sl), result)
 
 t2 = time.time()
 print('Total time: {:.1f} s'.format(t2 - t1))
 
 # Visualize
 
-fig, axs = plt.subplots(ncols=4, dpi=200)
-axs[0].imshow(I[sl//2], cmap='gray')
-axs[1].imshow(LTP_out[sl//2], cmap='viridis')
-axs[2].imshow(CULT_out[sl//2], cmap='viridis')
-axs[3].imshow(result[sl//2], cmap='viridis')
-axs[0].set_title('input')
-axs[1].set_title('LTP')
-axs[2].set_title('CULT')
-axs[3].set_title('result')
-axs[0].axis('off')
-axs[1].axis('off')
-axs[2].axis('off')
-axs[3].axis('off')
-plt.show()
+def viz():
+    nrows, ncols = 3, 4
+    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, dpi=200)
+    for row in range(nrows):
+        slice_num = (row+1)*(sl//4)
+        axs[row,0].imshow(I[slice_num], cmap='gray')
+        axs[row,1].imshow(LTP_out[slice_num], cmap='viridis')
+        axs[row,2].imshow(CULT_out[slice_num], cmap='viridis')
+        axs[row,3].imshow(result[slice_num], cmap='viridis')
+        axs[row,0].set_ylabel('{}/{}'.format(slice_num, sl))
+        for col in range(ncols): 
+            axs[row,col].set_xticks([]), axs[row,col].set_yticks([])
+        if row == 0:
+            axs[row,0].set_title('input')
+            axs[row,1].set_title('LTP')
+            axs[row,2].set_title('CULT')
+            axs[row,3].set_title('result')
+    plt.show()
+# viz()
 
